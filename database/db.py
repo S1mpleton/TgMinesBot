@@ -23,6 +23,16 @@ class DB():
         await self.con.execute(query, (verifed, user_id))
         await self.con.commit()
 
+    async def update_language(self, user_id, language=0):
+        query = "UPDATE users SET language = ? WHERE user_id = ?"
+        await self.con.execute(query, (language, user_id))
+        await self.con.commit()
+
+    async def get_language(self, user_id):
+        query = f'SELECT language FROM users WHERE user_id = {user_id}'
+        result = await self.con.execute(query)
+        return await result.fetchone()
+
     async def get_user(self, user_id):
         ver = "verifed"
         query = 'SELECT * FROM users WHERE user_id = ? AND verifed = ?'

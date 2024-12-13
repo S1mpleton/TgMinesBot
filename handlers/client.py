@@ -12,6 +12,11 @@ from config import CHANNEL_ID, REF_URL
 from keyboards.client import ClientKeyboard
 from other.filters import ChatJoinFilter, RegisteredFilter
 from database.db import DataBase
+from language.language import (GreetingsMSG, HeadMenuMSG,
+                               InstructionsMSG, RegisterMSG,
+                               IsRegMSG, ChooseCountMSG,
+                               AnaliticMSG, ReceivingMSG,
+                               LearngMSG, AnsverMSG, GameChanceMSG)
 
 router = Router()
 
@@ -27,11 +32,32 @@ class GetSignalStates(StatesGroup):
 @router.message(CommandStart())
 async def start_command(message: types.Message, bot: Bot):
     await DataBase.register(message.from_user.id, verifed="0")
-    await message.answer(f"""
-Добро пожаловать, <b>{message.from_user.first_name}!</b>
+    await message.answer(f"""Please choose your language""",
+                           reply_markup=await ClientKeyboard.language_keyboard())
 
-Для использования бота - <b>подпишись</b> на наш канал🤝""",
-                         reply_markup=await ClientKeyboard.start_keyboard(), parse_mode="HTML")
+
+async def greetings(message: types.Message, bot: Bot):
+    try:
+        await message.message.delete()
+    except:
+        pass
+
+    l = await DataBase.get_language(message.from_user.id)
+    await bot.send_message(message.from_user.id, GreetingsMSG(message.from_user.first_name, l[0]),
+                           reply_markup=await ClientKeyboard.start_keyboard(l[0]), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "RU")
+async def set_language(message: types.Message, bot: Bot):
+    await DataBase.update_language(message.from_user.id, "RU")
+    await message.answer(f"""Русский язык установлен""")
+    await greetings(message, bot)
+
+@router.callback_query(F.data == "ENG")
+async def set_language(message: types.Message, bot: Bot):
+    await DataBase.update_language(message.from_user.id, "ENG")
+    await message.answer(f"""English is setting""")
+    await greetings(message, bot)
 
 
 @router.callback_query(F.data.in_(["check", "back"]), ChatJoinFilter())
@@ -41,31 +67,15 @@ async def menu_output(callback: types.CallbackQuery):
     except:
         pass
 
-    await callback.message.answer("""
-Добро пожаловать в 🔸<b>HACK Bot</b>🔸!
-
-💣Mines - это гемблинг игра в букмекерской конторе 1win, которая основывается на классическом “Сапёре”.
-Ваша цель - открывать безопасные ячейки и не попадаться в ловушки.
-
-
-<code>Наш бот основан на нейросети от OpenAI.
-Он может предугадать расположение звёзд с вероятностью 85%.</code>
-❗️ ВНИМАНИЕ ❗️
-Бот работает корректно, только с новыми аккаунтами (инструкция по регистрации есть ниже по кнопке)
-❗️ ДЛЯ игры без риска ❗️
-Нужен новый, чистый аккаунт, в котором при первом
-депозите нужно ввести промокод LASO который даст +500% к депозиту (инструкция по кнопке ниже)""",
-                                  parse_mode="HTML", reply_markup=await ClientKeyboard.menu_keyboard())
+    l = await DataBase.get_language(callback.from_user.id)
+    await callback.message.answer(HeadMenuMSG("", l[0]),
+                                  parse_mode="HTML", reply_markup=await ClientKeyboard.menu_keyboard(l[0]))
 
     await callback.answer()
 
 
 @router.callback_query(F.data == "register")
 async def register_handler(callback: types.CallbackQuery, state: FSMContext):
-    text = f"""
-🔷 1. Для начала зарегистрируйтесь по ссылке на сайте с ОБЯЗАТЕЛЬНЫМ использованием промокода LASO <a href="{REF_URL}">1WIN</a>
-🔷 2. После успешной регистрации cкопируйте ваш айди на сайте (Вкладка 'пополнение' и в правом верхнем углу будет ваш ID).
-🔷 3. И отправьте его боту в ответ на это сообщение!"""
     photo = types.FSInputFile("reg.jpg")
 
     # await callback.message.edit_media(photo)
@@ -74,7 +84,9 @@ async def register_handler(callback: types.CallbackQuery, state: FSMContext):
     except:
         pass
 
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=await ClientKeyboard.register_keyboard())
+    l = await DataBase.get_language(callback.from_user.id)
+    await callback.message.answer(RegisterMSG(REF_URL, l[0]), parse_mode="HTML",
+                                  reply_markup=await ClientKeyboard.register_keyboard(l[0]))
     await state.set_state(RegisterState.input_id)
     # await callback.message.edit_caption(text)
 
@@ -86,40 +98,26 @@ async def register_handler_finaly(message: types.Message, state: FSMContext):
         number = int(message.text)
 
         if len(message.text) >= 8:
+
+            l = await DataBase.get_language(message.from_user.id)
             await DataBase.update_verifed(message.from_user.id)
-            await message.answer("Вы успешно зарегестрировались", reply_markup=await ClientKeyboard.on_register_keyboard())
+            await message.answer(IsRegMSG("", l[0]),
+                                 reply_markup=await ClientKeyboard.on_register_keyboard(l[0]))
             await state.clear()
         else:
             print(message.text)
-            await message.answer("Неверный ID")
+            await message.answer("Error ID")
             return
 
     except Exception as e:
         print(e)
         print(message.text)
-        await message.answer("Неверный ID")
+        await message.answer("Error ID")
         return
 
 
 @router.callback_query(F.data == "instruction")
 async def instucrion_handler(callback: types.CallbackQuery):
-    text = f"""
-Бот основан и обучен на кластере нейросети 🖥 <strong>[KanfiMines]</strong>.
-Для тренировки бота было сыграно 🎰10.000+ игр.
-
-В данный момент пользователи бота успешно делают в день 15-25% от своего 💸 капитала!
-<code>На текущий момент бот по сей день проходит проверки и  исправления! Точность бота составляет 92%!</code>
-Для получения максимального профита следуйте следующей инструкции:
-
-🟢 1. Пройти регистрацию в букмекерской конторе <a href="{REF_URL}">1WIN</a>
-Если не открывается - заходим с включенным VPN (Швеция). В Play Market/App Store полно бесплатных сервисов, например: Vpnify, Planet VPN, Hotspot VPN и так далее!
-<code>Без регистрации по промокоду kanfilud доступ к сигналам не будет открыт!</code>
-🟢 2. Пополнить баланс своего аккаунта.
-🟢 3. Перейти в раздел 1win games и выбрать игру 💣'MINES'.
-🟢 4. Выставить кол-во ловушек в размере трёх. Это важно!
-🟢 5. Запросить сигнал в боте и ставить по сигналам из бота.
-🟢 6. При неудачном сигнале советуем удвоить(Х²) ставку что бы полностью перекрыть потерю при следующем сигнале."""
-
     photo = types.FSInputFile("instruction.jpg")
 
     try:
@@ -127,7 +125,9 @@ async def instucrion_handler(callback: types.CallbackQuery):
     except:
         pass
 
-    await callback.message.answer_photo(photo, text, reply_markup=await ClientKeyboard.back_keyboard(), parse_mode="HTML")
+    l = await DataBase.get_language(callback.from_user.id)
+    await callback.message.answer_photo(photo, InstructionsMSG(REF_URL, l[0]),
+                                        reply_markup=await ClientKeyboard.back_keyboard(l[0]), parse_mode="HTML")
 
 
 @router.callback_query(F.data == "get_signal", RegisteredFilter())
@@ -136,13 +136,17 @@ async def get_signal_start_handler(callback: types.CallbackQuery, state: FSMCont
         await callback.message.delete()
     except:
         pass
-    await callback.message.answer("Выберите кол-во мин", reply_markup=await ClientKeyboard.mines_keyboard())
+
+    l = await DataBase.get_language(callback.from_user.id)
+    await callback.message.answer(ChooseCountMSG("", l[0]),
+                                  reply_markup=await ClientKeyboard.mines_keyboard())
     await state.set_state(GetSignalStates.chosing_mines)
 
 
 @router.callback_query(F.data == "get_signal_again", RegisteredFilter())
 async def get_signal_start_handler(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
+    l = await DataBase.get_language(callback.from_user.id)
     pth = data['pth']
 
     try:
@@ -151,21 +155,22 @@ async def get_signal_start_handler(callback: types.CallbackQuery, state: FSMCont
         pass
     photo = choice(os.listdir(f"./other/photos/{pth}"))
     number = randint(13425, 124345)
-    text = f"""
-💣 Игра №{number}
-🕓 {str(datetime.datetime.now().date()).replace("-", " ")} {":".join(str(datetime.datetime.now().time()).split(":")[:2])}
+    text = GameChanceMSG(str(number), str(datetime.datetime.now().date()).replace("-", " "),
+                         ":".join(str(datetime.datetime.now().time()).split(":")[:2]),
+                         str(round(uniform(89.0, 96.0),2)), l[0])
 
-Шанс - {round(uniform(91.0, 98.0),2)}%
-"""
-    await asyncio.sleep(uniform(0.1, 1.1))
-    msg = await callback.message.answer("🌐Анализирую базу данных")
-    await asyncio.sleep(uniform(0.1, 1.1))
-    await bot.edit_message_text(chat_id=callback.from_user.id, message_id=msg.message_id, text="📶Получаю данные с сервера")
-    await asyncio.sleep(uniform(0.1, 1.1))
-    await bot.edit_message_text(chat_id=callback.from_user.id, message_id=msg.message_id, text="⚠️Изучаю запросы")
-    await asyncio.sleep(uniform(0.1, 1.1))
-    await bot.edit_message_text(chat_id=callback.from_user.id, message_id=msg.message_id, text="⚠️Формирую ответ")
-    await asyncio.sleep(uniform(0.1, 1.1))
+    await asyncio.sleep(uniform(0.1, 1.5))
+    msg = await callback.message.answer(AnaliticMSG("", l[0]))
+    await asyncio.sleep(uniform(1.1, 2))
+    await bot.edit_message_text(chat_id=callback.from_user.id,
+                                message_id=msg.message_id, text=ReceivingMSG("", l[0]))
+    await asyncio.sleep(uniform(4.9, 9.1))
+    await bot.edit_message_text(chat_id=callback.from_user.id,
+                                message_id=msg.message_id, text=LearngMSG("", l[0]))
+    await asyncio.sleep(uniform(2.1, 7.6))
+    await bot.edit_message_text(chat_id=callback.from_user.id,
+                                message_id=msg.message_id, text=AnsverMSG("", l[0]))
+    await asyncio.sleep(uniform(0.1, 1.6))
     try:
         await bot.delete_message(chat_id=callback.from_user.id, message_id=msg.message_id)
     except:
@@ -173,7 +178,7 @@ async def get_signal_start_handler(callback: types.CallbackQuery, state: FSMCont
 
     print(photo)
     await callback.message.answer_photo(photo=types.FSInputFile(f"./other/photos/{pth}/{photo}"),
-                                        caption=text, reply_markup=await ClientKeyboard.get_signal_keyboard())
+                                        caption=text, reply_markup=await ClientKeyboard.get_signal_keyboard(l[0]))
 
 
 # Этот хендлер сработает если пользователь не зарегестрирован
@@ -185,6 +190,8 @@ async def get_signal_start_handler(callback: types.CallbackQuery, state: FSMCont
 @router.callback_query(F.data.in_(["one", "three", "five", "sever"]))
 async def get_signal_finaly(callback: types.CallbackQuery, state: FSMContext):
     print(callback.data)
+    l = await DataBase.get_language(callback.from_user.id)
+
     if callback.data == "one":
         pth = 1
     elif callback.data == "three":
@@ -198,21 +205,19 @@ async def get_signal_finaly(callback: types.CallbackQuery, state: FSMContext):
 
     photo = choice(os.listdir(f"./other/photos/{pth}"))
     number = randint(13425, 124345)
-    text = f"""
-💣 Игра №{number}
-🕓 {str(datetime.datetime.now().date()).replace("-", " ")} {":".join(str(datetime.datetime.now().time()).split(":")[:2])}
+    text = GameChanceMSG(str(number), str(datetime.datetime.now().date()).replace("-", " "),
+                         ":".join(str(datetime.datetime.now().time()).split(":")[:2]),
+                         str(round(uniform(89.0, 96.0),2)), l[0])
 
-Шанс - {round(uniform(91.0, 98.0),2)}%
-"""
 
-    await asyncio.sleep(uniform(0.1, 1.1))
-    await callback.message.edit_text("🌐Анализирую базу данных")
-    await asyncio.sleep(uniform(0.1, 1.1))
-    await callback.message.edit_text("📶Получаю данные с сервера")
-    await asyncio.sleep(uniform(0.1, 1.1))
-    await callback.message.edit_text("⚠️Изучаю запросы")
-    await asyncio.sleep(uniform(0.1, 1.1))
-    await callback.message.edit_text("⚠️Формирую ответ")
+    await asyncio.sleep(uniform(1.1, 1.8))
+    await callback.message.edit_text(AnaliticMSG("", l[0]))
+    await asyncio.sleep(uniform(3.1, 4.1))
+    await callback.message.edit_text(ReceivingMSG("", l[0]))
+    await asyncio.sleep(uniform(4.1, 8.1))
+    await callback.message.edit_text(LearngMSG("", l[0]))
+    await asyncio.sleep(uniform(2.1, 2.2))
+    await callback.message.edit_text(AnsverMSG("", l[0]))
     await asyncio.sleep(uniform(0.1, 1.1))
     try:
         await callback.message.delete()
@@ -220,5 +225,6 @@ async def get_signal_finaly(callback: types.CallbackQuery, state: FSMContext):
         pass
 
     print(photo)
+
     await callback.message.answer_photo(photo=types.FSInputFile(f"./other/photos/{pth}/{photo}"),
-                                        caption=text, reply_markup=await ClientKeyboard.get_signal_keyboard())
+                                        caption=text, reply_markup=await ClientKeyboard.get_signal_keyboard(l[0]))
