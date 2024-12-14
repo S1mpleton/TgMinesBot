@@ -30,7 +30,7 @@ router = Router()
 
 @router.message(F.text == '/admin')
 async def admin_handler(message: types.Message, state: FSMContext):
-    if message.from_user.id == ADMIN_ID:
+    if message.from_user.id in ADMIN_ID:
         await state.clear()
         users_count = await DataBase.get_users()
         money_list = await DataBase.get_users()

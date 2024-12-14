@@ -161,16 +161,16 @@ async def get_signal_start_handler(callback: types.CallbackQuery, state: FSMCont
 
     await asyncio.sleep(uniform(0.1, 1.5))
     msg = await callback.message.answer(AnaliticMSG("", l[0]))
-    await asyncio.sleep(uniform(1.1, 2))
+    await asyncio.sleep(uniform(0.8, 1.9))
     await bot.edit_message_text(chat_id=callback.from_user.id,
                                 message_id=msg.message_id, text=ReceivingMSG("", l[0]))
-    await asyncio.sleep(uniform(4.9, 9.1))
+    await asyncio.sleep(uniform(1.9, 4.1))
     await bot.edit_message_text(chat_id=callback.from_user.id,
                                 message_id=msg.message_id, text=LearngMSG("", l[0]))
-    await asyncio.sleep(uniform(2.1, 7.6))
+    await asyncio.sleep(uniform(1.1, 2.6))
     await bot.edit_message_text(chat_id=callback.from_user.id,
                                 message_id=msg.message_id, text=AnsverMSG("", l[0]))
-    await asyncio.sleep(uniform(0.1, 1.6))
+    await asyncio.sleep(uniform(0.1, 1.1))
     try:
         await bot.delete_message(chat_id=callback.from_user.id, message_id=msg.message_id)
     except:
@@ -210,13 +210,13 @@ async def get_signal_finaly(callback: types.CallbackQuery, state: FSMContext):
                          str(round(uniform(89.0, 96.0),2)), l[0])
 
 
-    await asyncio.sleep(uniform(1.1, 1.8))
+    await asyncio.sleep(uniform(0.1, 1.5))
     await callback.message.edit_text(AnaliticMSG("", l[0]))
-    await asyncio.sleep(uniform(3.1, 4.1))
+    await asyncio.sleep(uniform(0.8, 1.9))
     await callback.message.edit_text(ReceivingMSG("", l[0]))
-    await asyncio.sleep(uniform(4.1, 8.1))
+    await asyncio.sleep(uniform(2.0, 4.0))
     await callback.message.edit_text(LearngMSG("", l[0]))
-    await asyncio.sleep(uniform(2.1, 2.2))
+    await asyncio.sleep(uniform(1.1, 2.6))
     await callback.message.edit_text(AnsverMSG("", l[0]))
     await asyncio.sleep(uniform(0.1, 1.1))
     try:
